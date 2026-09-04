@@ -1,4 +1,4 @@
-﻿import threading
+import threading
 import time
 from datetime import datetime, date, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -25,14 +25,14 @@ class RoutineScheduler:
         evening_time = settings.get('evening_planning_time', '22:00')
         lead_minutes = int(settings.get('notify_lead_minutes', '10'))
 
-        # 1. Morning Briefing Notification
-        if current_time_str == morning_time and self.last_morning_sent_date != today_str:
+        # 1. Morning Briefing Notification (e.g. 07:30 - 11:59 window)
+        if current_time_str >= morning_time and current_time_str < "12:00" and self.last_morning_sent_date != today_str:
             briefing = agent_instance.generate_morning_briefing(today_str)
             notify(briefing['title'], briefing['message'], "morning")
             self.last_morning_sent_date = today_str
 
-        # 2. Evening Planning Notification
-        if current_time_str == evening_time and self.last_evening_sent_date != today_str:
+        # 2. Evening Planning Notification (e.g. 22:00 - 23:59 window)
+        if current_time_str >= evening_time and current_time_str <= "23:59" and self.last_evening_sent_date != today_str:
             reflection = agent_instance.generate_evening_reflection(today_str)
             notify(reflection['title'], reflection['message'], "evening")
             self.last_evening_sent_date = today_str

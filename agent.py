@@ -230,20 +230,27 @@ class RoutineAgent:
 
     def generate_evening_reflection(self, target_date: str) -> Dict[str, Any]:
         tasks = get_tasks_for_date(target_date)
-        if not tasks:
-            return {
-                "title": "🌙 Night Routine Planning Time",
-                "message": "Time to reflect on your day and add your tasks for tomorrow before sleep.",
-                "pending_tasks": []
-            }
-
+        tomorrow_date = (date.today() + timedelta(days=1)).isoformat()
         completed = [t for t in tasks if t.get('status') == 'completed']
         pending = [t for t in tasks if t.get('status') != 'completed']
         pct = int((len(completed) / len(tasks)) * 100) if tasks else 0
 
+        pending_str = ""
+        if pending:
+            pending_str = "\n\n📋 Unfinished tasks to rollover:\n" + "\n".join([f"• {t['title']}" for t in pending])
+
+        msg = (
+            f"🌙 Bedtime Routine Planning Time!\n\n"
+            f"Today's Progress ({target_date}):\n"
+            f"✅ Completed: {len(completed)}/{len(tasks)} tasks ({pct}%)\n"
+            f"{pending_str}\n\n"
+            f"⚡ Action Required: Open your Daily Routine Agent to log tomorrow's ({tomorrow_date}) plan before going to sleep!\n"
+            f"🔗 http://127.0.0.1:8000"
+        )
+
         return {
-            "title": "🌙 Evening Reflection & Night Planning",
-            "message": f"You completed {len(completed)}/{len(tasks)} tasks today ({pct}%). Time to log tomorrow's routine!",
+            "title": f"🌙 Bedtime Routine Planning ({tomorrow_date})",
+            "message": msg,
             "completed_count": len(completed),
             "pending_count": len(pending),
             "pending_tasks": [t['title'] for t in pending]

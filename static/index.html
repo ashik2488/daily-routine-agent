@@ -397,17 +397,23 @@
     </div>
   </div>
 
-  <!-- ─── Pomodoro Focus Modal ──────────────────────────────────────── -->
-  <div id="pomodoroModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center;">
+  <!-- ─── Pomodoro Focus Floating Panel & Modal ────────────────────── -->
+  <div id="pomodoroModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
     <div class="pomodoro-panel">
       <div class="pomodoro-header">
-        <h3>🍅 Pomodoro Focus Timer</h3>
-        <button class="icon-btn" id="closePomodoroBtn" style="font-size: 1.4rem; color: #94a3b8;">✕</button>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.2rem;">🍅</span>
+          <h3 style="font-size: 1.1rem;">Pomodoro Focus Timer</h3>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+          <button class="icon-btn" id="minimizePomodoroBtn" title="Minimize to floating bar (keep running while working)" style="font-size: 1.1rem; color: #94a3b8; padding: 0.2rem 0.5rem;">🗕</button>
+          <button class="icon-btn" id="closePomodoroBtn" title="Close and keep timer running in background" style="font-size: 1.1rem; color: #94a3b8; padding: 0.2rem 0.5rem;">✕</button>
+        </div>
       </div>
       <div class="pomodoro-display" id="pomodoroDisplay">25:00</div>
       <div class="pomodoro-label" id="pomodoroLabel">Focus Session</div>
       <div class="pomodoro-controls">
-        <button class="btn btn-primary" id="startPomodoroBtn">▶ Start</button>
+        <button class="btn btn-primary" id="startPomodoroBtn">▶ Start Focus</button>
         <button class="btn btn-secondary" id="pausePomodoroBtn" disabled>⏸ Pause</button>
         <button class="btn btn-secondary" id="resetPomodoroBtn">↺ Reset</button>
       </div>
@@ -438,6 +444,23 @@
           <span id="volumeVal" style="font-size: 0.75rem; color: var(--text-secondary); width: 30px;">60%</span>
         </div>
       </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem;">
+        💡 <em>Tip: You can minimize this timer or switch tabs — focus and sounds will run in the background!</em>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Floating Mini-Focus Dock (Picture-in-Picture) ──────────────── -->
+  <div id="pomodoroMiniDock" class="pomodoro-mini-dock" style="display: none;">
+    <div class="mini-dock-left">
+      <span class="pulse-dot"></span>
+      <span class="mini-dock-time" id="miniDockTime">25:00</span>
+      <span class="mini-dock-sound" id="miniDockSound">🌧️ Rain</span>
+    </div>
+    <div class="mini-dock-actions">
+      <button class="btn btn-secondary btn-sm" id="miniDockPauseBtn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">⏸</button>
+      <button class="btn btn-primary btn-sm" id="miniDockExpandBtn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">🗖 Expand</button>
+      <button class="btn btn-outline btn-sm" id="miniDockStopBtn" title="Stop session" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; color: #ef4444; border-color: rgba(239,68,68,0.4);">⏹</button>
     </div>
   </div>
 

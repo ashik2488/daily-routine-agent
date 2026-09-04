@@ -668,13 +668,62 @@ const pauseBtn = document.getElementById("pausePomodoroBtn");
 const resetBtn = document.getElementById("resetPomodoroBtn");
 let pomodoroTotalSecs = 25 * 60;
 
-document.getElementById("pomodoroBtn").addEventListener("click", () => {
+const pomodoroMiniDock = document.getElementById("pomodoroMiniDock");
+const miniDockTime = document.getElementById("miniDockTime");
+const miniDockSound = document.getElementById("miniDockSound");
+const miniDockPauseBtn = document.getElementById("miniDockPauseBtn");
+const miniDockExpandBtn = document.getElementById("miniDockExpandBtn");
+const miniDockStopBtn = document.getElementById("miniDockStopBtn");
+const minimizePomodoroBtn = document.getElementById("minimizePomodoroBtn");
+
+function showPomodoroModal() {
   pomodoroModal.style.display = "flex";
-});
-document.getElementById("closePomodoroBtn").addEventListener("click", () => {
+  if (pomodoroMiniDock) pomodoroMiniDock.style.display = "none";
+}
+
+function hidePomodoroModal(showDockIfActive = true) {
   pomodoroModal.style.display = "none";
-  stopAmbient();
+  if (showDockIfActive && (pomodoroRunning || ambientIsPlaying)) {
+    if (pomodoroMiniDock) pomodoroMiniDock.style.display = "flex";
+  } else {
+    if (pomodoroMiniDock) pomodoroMiniDock.style.display = "none";
+  }
+}
+
+document.getElementById("pomodoroBtn").addEventListener("click", showPomodoroModal);
+
+document.getElementById("closePomodoroBtn").addEventListener("click", () => {
+  hidePomodoroModal(true);
 });
+
+if (minimizePomodoroBtn) {
+  minimizePomodoroBtn.addEventListener("click", () => {
+    hidePomodoroModal(true);
+    showToast("🍅 Focus session running in the background. Tap the floating dock to expand anytime!");
+  });
+}
+
+if (miniDockExpandBtn) {
+  miniDockExpandBtn.addEventListener("click", showPomodoroModal);
+}
+
+if (miniDockPauseBtn) {
+  miniDockPauseBtn.addEventListener("click", () => {
+    if (pomodoroRunning) {
+      pausePomodoro();
+      miniDockPauseBtn.textContent = "▶";
+    } else {
+      startPomodoro();
+      miniDockPauseBtn.textContent = "⏸";
+    }
+  });
+}
+
+if (miniDockStopBtn) {
+  miniDockStopBtn.addEventListener("click", () => {
+    stopFocusSession();
+  });
+}
 
 document.querySelectorAll(".pomo-mode").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -687,42 +736,84 @@ document.querySelectorAll(".pomo-mode").forEach(btn => {
     if (pomodoroInterval) { clearInterval(pomodoroInterval); pomodoroInterval = null; }
     pomodoroRunning = false;
     startBtn.disabled = false; pauseBtn.disabled = true;
+    if (miniDockPauseBtn) miniDockPauseBtn.textContent = "▶";
   });
 });
 
 function updatePomodoroDisplay() {
   const m = Math.floor(pomodoroSecondsLeft / 60);
   const s = pomodoroSecondsLeft % 60;
-  pomodoroDisplay.textContent = `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  const timeStr = `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  pomodoroDisplay.textContent = timeStr;
+  if (miniDockTime) miniDockTime.textContent = timeStr;
+
+  const soundType = document.getElementById("ambientSelect")?.value || "none";
+  const soundIcons = { rain: "🌧️ Rain", brown: "🌊 Brown Noise", cafe: "☕ Cafe Hum", none: "🔇 Silent" };
+  if (miniDockSound) miniDockSound.textContent = soundIcons[soundType] || "🎵 Focus";
 }
 
-startBtn.addEventListener("click", async () => {
+async function startPomodoro() {
   if (pomodoroRunning) return;
-  pomodoroRunning = true; startBtn.disabled = true; pauseBtn.disabled = false;
-  await startAmbient(document.getElementById("ambientSelect").value);
-  pomodoroInterval = setInterval(() => {
+  pomodoroRunning = true;
+  startBtn.disabled = true;
+  pauseBtn.disabled = false;
+  if (miniDockPauseBtn) miniDockPauseBtn.textContent = "⏸";
+
+  const soundChoice = document.getElementById("ambientSelect").value;
+  if (soundChoice !== "none") {
+    await startAmbient(soundChoice);
+  }
+
+  updatePomodoroDisplay();
+
+  pomodoroInterval = setInterval(async () => {
     pomodoroSecondsLeft--;
     updatePomodoroDisplay();
     if (pomodoroSecondsLeft <= 0) {
-      clearInterval(pomodoroInterval); pomodoroInterval = null; pomodoroRunning = false;
+      clearInterval(pomodoroInterval);
+      pomodoroInterval = null;
+      pomodoroRunning = false;
       stopAmbient();
-      startBtn.disabled = false; pauseBtn.disabled = true;
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      if (pomodoroMiniDock) pomodoroMiniDock.style.display = "none";
       playDoneChime();
-      showToast("🍅 Pomodoro complete! Time for a break.");
+      showToast("🍅 Focus Session Complete! Time for a break.");
+      // Trigger native notification
+      try {
+        await fetch("/api/notifications/test", { method: "POST" });
+      } catch (e) {}
     }
   }, 1000);
-});
+}
 
-pauseBtn.addEventListener("click", () => {
+function pausePomodoro() {
   if (!pomodoroRunning) return;
-  clearInterval(pomodoroInterval); pomodoroInterval = null; pomodoroRunning = false;
-  stopAmbient(); startBtn.disabled = false; pauseBtn.disabled = true;
-});
+  clearInterval(pomodoroInterval);
+  pomodoroInterval = null;
+  pomodoroRunning = false;
+  startBtn.disabled = false;
+  pauseBtn.disabled = true;
+  if (miniDockPauseBtn) miniDockPauseBtn.textContent = "▶";
+}
 
+function stopFocusSession() {
+  clearInterval(pomodoroInterval);
+  pomodoroInterval = null;
+  pomodoroRunning = false;
+  stopAmbient();
+  pomodoroSecondsLeft = pomodoroTotalSecs;
+  updatePomodoroDisplay();
+  startBtn.disabled = false;
+  pauseBtn.disabled = true;
+  if (pomodoroMiniDock) pomodoroMiniDock.style.display = "none";
+  showToast("Focus session stopped.");
+}
+
+startBtn.addEventListener("click", startPomodoro);
+pauseBtn.addEventListener("click", pausePomodoro);
 resetBtn.addEventListener("click", () => {
-  clearInterval(pomodoroInterval); pomodoroInterval = null; pomodoroRunning = false;
-  stopAmbient(); pomodoroSecondsLeft = pomodoroTotalSecs;
-  updatePomodoroDisplay(); startBtn.disabled = false; pauseBtn.disabled = true;
+  stopFocusSession();
 });
 
 // ─── Ambient Sound Engine (Web Audio API) ────────────────────────────────────
