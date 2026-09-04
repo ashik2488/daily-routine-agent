@@ -696,10 +696,10 @@ function updatePomodoroDisplay() {
   pomodoroDisplay.textContent = `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
 
-startBtn.addEventListener("click", () => {
+startBtn.addEventListener("click", async () => {
   if (pomodoroRunning) return;
   pomodoroRunning = true; startBtn.disabled = true; pauseBtn.disabled = false;
-  startAmbient(document.getElementById("ambientSelect").value);
+  await startAmbient(document.getElementById("ambientSelect").value);
   pomodoroInterval = setInterval(() => {
     pomodoroSecondsLeft--;
     updatePomodoroDisplay();
@@ -725,60 +725,226 @@ resetBtn.addEventListener("click", () => {
   updatePomodoroDisplay(); startBtn.disabled = false; pauseBtn.disabled = true;
 });
 
-// Ambient sounds using Web Audio API
-function getAudioCtx() {
-  if (!pomodoroAudioCtx) pomodoroAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// ─── Ambient Sound Engine (Web Audio API) ────────────────────────────────────
+let ambientIsPlaying = false;
+let ambientMasterGain = null;
+let ambientNodes = [];
+
+async function getAudioCtx() {
+  if (!pomodoroAudioCtx) {
+    pomodoroAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (pomodoroAudioCtx.state === "suspended") {
+    await pomodoroAudioCtx.resume();
+  }
   return pomodoroAudioCtx;
 }
 
-function startAmbient(type) {
-  stopAmbient();
-  if (type === "none") return;
-  try {
-    const ctx = getAudioCtx();
-    const bufSize = ctx.sampleRate * 2;
-    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    // White noise base
-    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.15;
-
-    const src = ctx.createBufferSource();
-    src.buffer = buf; src.loop = true;
-
-    const filter = ctx.createBiquadFilter();
-    if (type === "brown") { filter.type = "lowpass"; filter.frequency.value = 200; }
-    else if (type === "cafe") { filter.type = "bandpass"; filter.frequency.value = 800; filter.Q.value = 0.5; }
-    else { filter.type = "highpass"; filter.frequency.value = 100; }
-
-    const gain = ctx.createGain();
-    gain.gain.value = type === "rain" ? 0.4 : 0.2;
-
-    src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-    src.start();
-    pomodoroAudioNode = { src, gain };
-  } catch (e) { /* audio not available */ }
+function getAmbientVolume() {
+  const slider = document.getElementById("ambientVolume");
+  return slider ? parseInt(slider.value, 10) / 100 : 0.6;
 }
 
-function stopAmbient() {
-  if (pomodoroAudioNode) {
-    try { pomodoroAudioNode.src.stop(); } catch (e) {}
-    pomodoroAudioNode = null;
+async function startAmbient(type) {
+  stopAmbient();
+  if (!type || type === "none") {
+    updateSoundBtnState(false);
+    return;
+  }
+
+  try {
+    const ctx = await getAudioCtx();
+    const sampleRate = ctx.sampleRate;
+    const bufferDuration = 4; // 4 seconds looping buffer
+    const bufferSize = sampleRate * bufferDuration;
+    const buffer = ctx.createBuffer(2, bufferSize, sampleRate);
+    const leftData = buffer.getChannelData(0);
+    const rightData = buffer.getChannelData(1);
+
+    if (type === "brown") {
+      // Brownian / Red Noise (Deep ocean swell)
+      let lastL = 0, lastR = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const whiteL = Math.random() * 2 - 1;
+        const whiteR = Math.random() * 2 - 1;
+        lastL = (lastL + (0.02 * whiteL)) / 1.02;
+        lastR = (lastR + (0.02 * whiteR)) / 1.02;
+        leftData[i] = lastL * 3.5;
+        rightData[i] = lastR * 3.5;
+      }
+    } else if (type === "rain") {
+      // Pink Noise with rainfall filtering (Paul Kellet's filter)
+      let b0L = 0, b1L = 0, b2L = 0, b3L = 0, b4L = 0, b5L = 0, b6L = 0;
+      let b0R = 0, b1R = 0, b2R = 0, b3R = 0, b4R = 0, b5R = 0, b6R = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const whiteL = Math.random() * 2 - 1;
+        b0L = 0.99886 * b0L + whiteL * 0.0555179;
+        b1L = 0.99332 * b1L + whiteL * 0.0750759;
+        b2L = 0.96900 * b2L + whiteL * 0.1538520;
+        b3L = 0.86650 * b3L + whiteL * 0.3104856;
+        b4L = 0.55000 * b4L + whiteL * 0.5329522;
+        b5L = -0.7616 * b5L - whiteL * 0.0168980;
+        leftData[i] = (b0L + b1L + b2L + b3L + b4L + b5L + b6L + whiteL * 0.5362) * 0.11;
+        b6L = whiteL * 0.115926;
+
+        const whiteR = Math.random() * 2 - 1;
+        b0R = 0.99886 * b0R + whiteR * 0.0555179;
+        b1R = 0.99332 * b1R + whiteR * 0.0750759;
+        b2R = 0.96900 * b2R + whiteR * 0.1538520;
+        b3R = 0.86650 * b3R + whiteR * 0.3104856;
+        b4R = 0.55000 * b4R + whiteR * 0.5329522;
+        b5R = -0.7616 * b5R - whiteR * 0.0168980;
+        rightData[i] = (b0R + b1R + b2R + b3R + b4R + b5R + b6R + whiteR * 0.5362) * 0.11;
+        b6R = whiteR * 0.115926;
+      }
+    } else if (type === "cafe") {
+      // Warm room tone murmur
+      let lastL = 0, lastR = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const whiteL = Math.random() * 2 - 1;
+        const whiteR = Math.random() * 2 - 1;
+        lastL = (lastL + (0.05 * whiteL)) / 1.05;
+        lastR = (lastR + (0.05 * whiteR)) / 1.05;
+        leftData[i] = lastL * 2.0;
+        rightData[i] = lastR * 2.0;
+      }
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+
+    // Filters for specific sounds
+    const filter1 = ctx.createBiquadFilter();
+    const filter2 = ctx.createBiquadFilter();
+
+    if (type === "brown") {
+      filter1.type = "lowpass";
+      filter1.frequency.value = 400;
+      filter2.type = "peaking";
+      filter2.frequency.value = 120;
+      filter2.gain.value = 6;
+    } else if (type === "rain") {
+      filter1.type = "bandpass";
+      filter1.frequency.value = 1800;
+      filter1.Q.value = 0.7;
+      filter2.type = "highpass";
+      filter2.frequency.value = 350;
+    } else if (type === "cafe") {
+      filter1.type = "bandpass";
+      filter1.frequency.value = 650;
+      filter1.Q.value = 1.2;
+      filter2.type = "lowpass";
+      filter2.frequency.value = 1200;
+    }
+
+    // Master Gain controlled by volume slider
+    ambientMasterGain = ctx.createGain();
+    const vol = getAmbientVolume();
+    ambientMasterGain.gain.setValueAtTime(vol, ctx.currentTime);
+
+    // Audio Graph
+    src.connect(filter1);
+    filter1.connect(filter2);
+    filter2.connect(ambientMasterGain);
+    ambientMasterGain.connect(ctx.destination);
+
+    src.start();
+    ambientNodes = [src, filter1, filter2, ambientMasterGain];
+    ambientIsPlaying = true;
+    updateSoundBtnState(true);
+  } catch (err) {
+    console.error("Ambient audio error:", err);
   }
 }
 
-function playDoneChime() {
+function stopAmbient() {
+  ambientNodes.forEach(node => {
+    try {
+      if (node.stop) node.stop();
+      if (node.disconnect) node.disconnect();
+    } catch (e) {}
+  });
+  ambientNodes = [];
+  ambientMasterGain = null;
+  ambientIsPlaying = false;
+  updateSoundBtnState(false);
+}
+
+function updateSoundBtnState(playing) {
+  const btn = document.getElementById("toggleSoundBtn");
+  if (btn) {
+    if (playing) {
+      btn.textContent = "⏹ Stop Sound";
+      btn.classList.add("btn-primary");
+      btn.classList.remove("btn-outline");
+    } else {
+      btn.textContent = "🔊 Play Sound";
+      btn.classList.remove("btn-primary");
+      btn.classList.add("btn-outline");
+    }
+  }
+}
+
+// Sound toggle button (preview / play anytime)
+const toggleSoundBtn = document.getElementById("toggleSoundBtn");
+if (toggleSoundBtn) {
+  toggleSoundBtn.addEventListener("click", async () => {
+    if (ambientIsPlaying) {
+      stopAmbient();
+    } else {
+      const type = document.getElementById("ambientSelect").value;
+      if (type === "none") {
+        document.getElementById("ambientSelect").value = "rain";
+      }
+      await startAmbient(document.getElementById("ambientSelect").value);
+    }
+  });
+}
+
+// Live dropdown change
+const ambientSelect = document.getElementById("ambientSelect");
+if (ambientSelect) {
+  ambientSelect.addEventListener("change", async e => {
+    if (ambientIsPlaying || pomodoroRunning) {
+      if (e.target.value === "none") {
+        stopAmbient();
+      } else {
+        await startAmbient(e.target.value);
+      }
+    }
+  });
+}
+
+// Volume slider
+const ambientVolume = document.getElementById("ambientVolume");
+const volumeVal = document.getElementById("volumeVal");
+if (ambientVolume) {
+  ambientVolume.addEventListener("input", e => {
+    const val = parseInt(e.target.value, 10);
+    if (volumeVal) volumeVal.textContent = `${val}%`;
+    if (ambientMasterGain && pomodoroAudioCtx) {
+      ambientMasterGain.gain.setValueAtTime(val / 100, pomodoroAudioCtx.currentTime);
+    }
+  });
+}
+
+async function playDoneChime() {
   try {
-    const ctx = getAudioCtx();
-    const notes = [523, 659, 784, 1047];
+    const ctx = await getAudioCtx();
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.frequency.value = freq; osc.type = "sine";
-      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.2);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.2 + 0.5);
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + i * 0.2);
-      osc.stop(ctx.currentTime + i * 0.2 + 0.5);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      const startT = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0.25, startT);
+      gain.gain.exponentialRampToValueAtTime(0.001, startT + 0.6);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startT);
+      osc.stop(startT + 0.6);
     });
   } catch (e) {}
 }

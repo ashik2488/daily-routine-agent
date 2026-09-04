@@ -416,14 +416,27 @@
         <button class="pomo-mode" data-mins="5" data-label="Short Break">☕ 5 min</button>
         <button class="pomo-mode" data-mins="15" data-label="Long Break">🛌 15 min</button>
       </div>
-      <div class="form-group" style="margin-top: 1rem;">
-        <label style="font-size: 0.85rem; color: var(--text-muted);">🎵 Ambient Sound</label>
-        <select id="ambientSelect" class="form-control" style="font-size: 0.85rem;">
-          <option value="none">None (Silent)</option>
-          <option value="rain">🌧️ Rain</option>
-          <option value="brown">🌊 Brown Noise</option>
-          <option value="cafe">☕ Cafe Hum</option>
+      <div class="ambient-sound-box" style="margin-top: 1rem; width: 100%; background: #0f172a; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label style="font-size: 0.85rem; font-weight: 600; color: #818cf8; display: flex; align-items: center; gap: 0.4rem;">
+            🎵 Ambient Soundscape
+          </label>
+          <button type="button" class="btn btn-outline btn-sm" id="toggleSoundBtn" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;">
+            🔊 Play Sound
+          </button>
+        </div>
+        <select id="ambientSelect" class="form-control" style="font-size: 0.85rem; margin-bottom: 0.6rem;">
+          <option value="rain">🌧️ Rain (Gentle Rainfall)</option>
+          <option value="brown">🌊 Brown Noise (Deep Ocean Waves)</option>
+          <option value="cafe">☕ Cafe Hum (Warm Coffee Shop)</option>
+          <option value="none">🔇 None (Silent)</option>
         </select>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">🔈</span>
+          <input type="range" id="ambientVolume" min="0" max="100" value="60" style="flex: 1; accent-color: #6366f1; cursor: pointer;">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">🔊</span>
+          <span id="volumeVal" style="font-size: 0.75rem; color: var(--text-secondary); width: 30px;">60%</span>
+        </div>
       </div>
     </div>
   </div>
