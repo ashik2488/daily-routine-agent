@@ -1,4 +1,4 @@
-﻿import re
+import re
 from datetime import datetime, timedelta, date
 from typing import List, Dict, Any, Optional
 import json
@@ -248,5 +248,135 @@ class RoutineAgent:
             "pending_count": len(pending),
             "pending_tasks": [t['title'] for t in pending]
         }
+
+    def decompose_task_into_subtasks(self, task_title: str, duration_minutes: int) -> List[Dict]:
+        """
+        Heuristic AI decomposition of a task into 3-5 actionable subtasks.
+        Works completely offline — no external API needed.
+        """
+        title_lower = task_title.lower()
+
+        # Pattern-based decomposition library
+        patterns = [
+            # Coding / Programming
+            (r"\b(code|coding|develop|build|program|implement|feature|api|backend|frontend)\b",
+             ["Define requirements & scope", "Design architecture / pseudocode",
+              "Write core implementation", "Test and debug", "Review and document"]),
+            # Study / Learning
+            (r"\b(study|learn|course|lecture|module|tutorial|revision|exam|research)\b",
+             ["Review previous notes", "Read / watch new material",
+              "Take structured notes", "Solve practice problems", "Summarize key concepts"]),
+            # Writing / Content
+            (r"\b(write|essay|report|blog|article|draft|document|content|thesis)\b",
+             ["Outline key points", "Write introduction & body draft",
+              "Add supporting evidence / examples", "Edit for clarity and flow", "Final proofread"]),
+            # Meeting / Presentation
+            (r"\b(meeting|presentation|standup|call|pitch|demo|review)\b",
+             ["Prepare agenda & talking points", "Gather relevant data / slides",
+              "Send calendar invite (if needed)", "Conduct meeting / call", "Send summary & action items"]),
+            # Workout / Fitness
+            (r"\b(gym|workout|exercise|run|jog|train|yoga|stretch|fitness)\b",
+             ["Warm-up (5-10 min)", "Main workout block", "Cool-down & stretching", "Hydrate and log progress"]),
+            # Design / Creative
+            (r"\b(design|ui|ux|wireframe|prototype|mockup|creative|graphic|visual)\b",
+             ["Gather references & inspiration", "Sketch / wireframe concepts",
+              "Create high-fidelity design", "Gather feedback", "Finalize and export assets"]),
+            # Planning / Organization
+            (r"\b(plan|organize|setup|configure|prepare|arrange|schedule)\b",
+             ["List all required steps", "Prioritize and sequence items",
+              "Set up environment / tools", "Execute planned steps", "Review and adjust"]),
+            # Reading
+            (r"\b(read|book|paper|article|chapter)\b",
+             ["Set reading goal (pages / time)", "Active reading with highlights",
+              "Note key insights", "Summarize main takeaways"]),
+        ]
+
+        selected_steps = None
+        for pattern, steps in patterns:
+            if re.search(pattern, title_lower):
+                selected_steps = steps
+                break
+
+        # Generic fallback
+        if not selected_steps:
+            selected_steps = [
+                f"Define goal for: {task_title}",
+                "Gather required resources / materials",
+                "Execute primary work block",
+                "Review output and iterate",
+                "Wrap up and document outcome"
+            ]
+
+        # Slice to fit duration — shorter tasks get fewer subtasks
+        if duration_minutes <= 20:
+            selected_steps = selected_steps[:2]
+        elif duration_minutes <= 45:
+            selected_steps = selected_steps[:3]
+        elif duration_minutes <= 90:
+            selected_steps = selected_steps[:4]
+
+        # Distribute time proportionally
+        n = len(selected_steps)
+        base_min = max(5, duration_minutes // n)
+
+        return [
+            {"title": step, "estimated_minutes": base_min}
+            for step in selected_steps
+        ]
+
+    def generate_weekly_analytics_report(self, days_data: list) -> str:
+        """
+        Generates a natural-language weekly summary from daily stats data.
+        days_data: list of dicts with keys: date, total, completed, skipped
+        """
+        if not days_data:
+            return "No data available for this week yet. Start logging your daily tasks to see your analytics!"
+
+        total_tasks = sum(d.get("total", 0) for d in days_data)
+        total_completed = sum(d.get("completed", 0) for d in days_data)
+        total_skipped = sum(d.get("skipped", 0) for d in days_data)
+        days_with_tasks = [d for d in days_data if d.get("total", 0) > 0]
+        active_days = len(days_with_tasks)
+
+        if total_tasks == 0:
+            return "No tasks were logged this week. Use the Bedtime Task Ingestor each night to build your routine!"
+
+        overall_pct = int((total_completed / total_tasks) * 100) if total_tasks else 0
+
+        # Best day
+        best_day = max(days_data, key=lambda d: (d.get("completed", 0) / d.get("total", 1) if d.get("total", 0) > 0 else 0))
+        best_pct = int((best_day.get("completed", 0) / best_day.get("total", 1)) * 100) if best_day.get("total", 0) > 0 else 0
+
+        # Consistency score
+        consistency = int((active_days / 7) * 100)
+
+        # Performance tier
+        if overall_pct >= 80:
+            tier = "Outstanding"
+            emoji = "🏆"
+            advice = "Exceptional discipline! Keep this momentum and consider stretching your goals."
+        elif overall_pct >= 60:
+            tier = "Strong"
+            emoji = "🌟"
+            advice = "Solid execution. Focus on your P1 tasks first each morning to push even higher."
+        elif overall_pct >= 40:
+            tier = "Building"
+            emoji = "💪"
+            advice = "You're building consistency. Try reducing your daily task count to improve completion rate."
+        else:
+            tier = "Getting Started"
+            emoji = "🌱"
+            advice = "Every expert was once a beginner. Pick 1-3 must-do tasks each day and build from there."
+
+        report = (
+            f"{emoji} **Weekly Performance: {tier}** ({overall_pct}% completion)\n\n"
+            f"📋 Tasks Logged: {total_tasks} across {active_days}/7 active days\n"
+            f"✅ Completed: {total_completed}  |  ✖ Skipped: {total_skipped}\n"
+            f"📅 Consistency Score: {consistency}%\n"
+            f"🏅 Best Day: {best_day.get('date', 'N/A')} ({best_pct}% completion)\n\n"
+            f"💡 Agent Insight: {advice}"
+        )
+        return report
+
 
 agent_instance = RoutineAgent()

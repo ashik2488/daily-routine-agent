@@ -1,10 +1,13 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="Daily Routine Agent — Autonomous bedtime planner & notification hub">
   <title>Daily Routine Agent</title>
   <link rel="icon" type="image/png" href="/static/logo.png">
+  <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -15,63 +18,51 @@
       <img src="/static/logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);">
       <div>
         <div class="logo-title">Daily Routine Agent</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted);">Autonomous Bedtime Planner & Notification Hub</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Autonomous Bedtime Planner &amp; Notification Hub</div>
       </div>
     </div>
     <div class="header-actions">
       <div class="clock-display" id="liveClock">--:--:--</div>
-      <button class="btn btn-outline btn-sm" id="testNotifyBtn">🔔 Test Windows Alert</button>
+      <button class="btn btn-outline btn-sm" id="pomodoroBtn" title="Start Pomodoro Focus Timer">🍅 Focus</button>
+      <button class="btn btn-outline btn-sm" id="testNotifyBtn">🔔 Test Alert</button>
       <button class="btn btn-outline btn-sm" id="quickTestEmailBtn">📧 Test Email</button>
     </div>
   </header>
 
   <!-- Main Container -->
   <main class="main-container">
-    
+
     <!-- Navigation Tabs -->
     <div class="nav-tabs">
-      <button class="tab-btn active" data-tab="scheduleTab">📅 Today's Schedule</button>
-      <button class="tab-btn" data-tab="nightPlanTab">🌙 Bedtime Task Ingestor</button>
-      <button class="tab-btn" data-tab="briefingTab">🌅 Morning & Night Briefing</button>
-      <button class="tab-btn" data-tab="settingsTab">⚙️ Notification & Email Settings</button>
+      <button class="tab-btn active" data-tab="scheduleTab">📅 Today</button>
+      <button class="tab-btn" data-tab="nightPlanTab">🌙 Night Ingestor</button>
+      <button class="tab-btn" data-tab="habitsTab">🔥 Habits</button>
+      <button class="tab-btn" data-tab="analyticsTab">📊 Analytics</button>
+      <button class="tab-btn" data-tab="briefingTab">🌅 Briefing</button>
+      <button class="tab-btn" data-tab="settingsTab">⚙️ Settings</button>
     </div>
 
     <!-- Quick Stats Cards -->
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-title">
-          <span>Today's Tasks</span>
-          <span>📋</span>
-        </div>
+        <div class="stat-title"><span>Today's Tasks</span><span>📋</span></div>
         <div class="stat-value" id="statTotal">0</div>
         <div class="progress-bar-container">
           <div class="progress-bar-fill" id="statProgressBar"></div>
         </div>
       </div>
-
       <div class="stat-card">
-        <div class="stat-title">
-          <span>Completed</span>
-          <span>✅</span>
-        </div>
+        <div class="stat-title"><span>Completed</span><span>✅</span></div>
         <div class="stat-value" id="statCompleted" style="color: #10b981;">0</div>
         <div style="font-size: 0.8rem; color: var(--text-muted);" id="statPercent">0% finished</div>
       </div>
-
       <div class="stat-card">
-        <div class="stat-title">
-          <span>Top Priorities (MITs)</span>
-          <span>⭐</span>
-        </div>
+        <div class="stat-title"><span>Top Priorities (MITs)</span><span>⭐</span></div>
         <div class="stat-value" id="statMits" style="color: #c084fc;">0</div>
         <div style="font-size: 0.8rem; color: var(--text-muted);">Must-do focus targets</div>
       </div>
-
       <div class="stat-card">
-        <div class="stat-title">
-          <span>Focus Time Planned</span>
-          <span>⏳</span>
-        </div>
+        <div class="stat-title"><span>Focus Time Planned</span><span>⏳</span></div>
         <div class="stat-value" id="statHours" style="color: #38bdf8;">0h</div>
         <div style="font-size: 0.8rem; color: var(--text-muted);" id="streakDays">Daily streak active</div>
       </div>
@@ -87,9 +78,9 @@
             <button class="btn btn-secondary btn-sm" id="todayBtn">Today</button>
             <button class="btn btn-secondary btn-sm" id="nextDayBtn">Next ▶</button>
           </div>
-          <div style="display: flex; gap: 0.5rem;">
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <button class="btn btn-emerald btn-sm" id="openAddModalBtn">+ Add Task</button>
-            <button class="btn btn-primary btn-sm" id="optimizeScheduleBtn">✨ AI Optimize Routine</button>
+            <button class="btn btn-primary btn-sm" id="optimizeScheduleBtn">✨ AI Optimize</button>
           </div>
         </div>
 
@@ -110,24 +101,31 @@
     <section id="nightPlanTab" class="tab-content" style="display: none;">
       <div class="card">
         <div class="card-header">
-          <div class="card-title">🌙 Bedtime Task Dump & Auto-Parser</div>
-          <span style="font-size: 0.85rem; color: #38bdf8;">Type or paste freely before sleeping</span>
+          <div class="card-title">🌙 Bedtime Task Dump &amp; Auto-Parser</div>
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button class="btn btn-outline btn-sm" id="voiceMicBtn" title="Voice input">🎙️ Voice</button>
+            <span style="font-size: 0.85rem; color: #38bdf8;">Type or speak before sleeping</span>
+          </div>
         </div>
 
         <div class="night-box">
           <p style="color: var(--text-secondary); font-size: 0.9rem;">
-            Dump your tasks naturally before sleeping. The Routine Agent will automatically extract times, priorities, energy levels, categories, and email/notify your schedule.
+            Dump tasks naturally before sleeping. The agent extracts times, priorities, energy levels and notifies your schedule.
           </p>
 
           <div class="template-chips">
             <span style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Quick Templates:</span>
-            <div class="chip" onclick="applyTemplate('productive')">⚡ High Productivity Day</div>
-            <div class="chip" onclick="applyTemplate('fitness')">💪 Fitness & Balance</div>
-            <div class="chip" onclick="applyTemplate('study')">📚 Deep Study Sprint</div>
+            <div class="chip" onclick="applyTemplate('productive')">⚡ High Productivity</div>
+            <div class="chip" onclick="applyTemplate('fitness')">💪 Fitness Day</div>
+            <div class="chip" onclick="applyTemplate('study')">📚 Deep Study</div>
+          </div>
+
+          <div id="voiceStatus" style="display: none; padding: 0.5rem; background: rgba(99,102,241,0.15); border-radius: 8px; font-size: 0.85rem; color: #818cf8;">
+            🎙️ Listening... speak your tasks now
           </div>
 
           <div style="display: flex; gap: 1rem; align-items: center;">
-            <label style="font-size: 0.9rem; color: var(--text-secondary);">Target Date for Plan:</label>
+            <label style="font-size: 0.9rem; color: var(--text-secondary);">Target Date:</label>
             <input type="date" id="nightTargetDate" class="form-control" style="width: auto;">
           </div>
 
@@ -141,29 +139,60 @@
 
           <div style="display: flex; justify-content: flex-end; gap: 1rem;">
             <button class="btn btn-secondary" onclick="document.getElementById('nightTextInput').value=''">Clear</button>
-            <button class="btn btn-primary" id="submitNightTasksBtn">🚀 Parse, Schedule & Notify Tomorrow</button>
+            <button class="btn btn-primary" id="submitNightTasksBtn">🚀 Parse, Schedule &amp; Notify</button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 3: MORNING & NIGHT BRIEFING -->
+    <!-- TAB 3: HABITS TRACKER -->
+    <section id="habitsTab" class="tab-content" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔥 Daily Habit Tracker</div>
+          <button class="btn btn-emerald btn-sm" id="openAddHabitBtn">+ New Habit</button>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.2rem;">
+          Tap a habit to toggle it done for today. Build streaks and watch your consistency grow.
+        </p>
+        <div id="habitsGrid" class="habits-grid">
+          <div style="text-align:center; color: var(--text-muted); padding: 2rem;">Loading habits...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: ANALYTICS -->
+    <section id="analyticsTab" class="tab-content" style="display: none;">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title" style="margin-bottom: 1rem;">📊 7-Day Completion Chart</div>
+          <canvas id="analyticsChart" height="180" style="width: 100%;"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom: 1rem; color: #c084fc;">🤖 AI Weekly Report</div>
+          <div id="analyticsReport" style="color: var(--text-secondary); font-size: 0.9rem; white-space: pre-line; line-height: 1.7;">
+            Loading weekly report...
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: MORNING & NIGHT BRIEFING -->
     <section id="briefingTab" class="tab-content" style="display: none;">
       <div class="grid-2">
         <div class="card">
           <div class="card-title" style="color: #fbbf24;">🌅 Morning Kickoff Digest</div>
           <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">
-            This briefing is sent automatically to your desktop & email when you wake up.
+            Auto-sent to desktop &amp; email when you wake up.
           </p>
           <div id="morningDigestBox" style="margin-top: 1rem; background: #0f172a; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
             Loading morning briefing...
           </div>
         </div>
-
         <div class="card">
-          <div class="card-title" style="color: #c084fc;">🌙 Evening Review & Reflection</div>
+          <div class="card-title" style="color: #c084fc;">🌙 Evening Review &amp; Reflection</div>
           <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">
-            Review daily execution and rollover pending items into your bedtime dump.
+            Review daily execution and rollover pending items.
           </p>
           <div id="eveningDigestBox" style="margin-top: 1rem; background: #0f172a; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
             Loading evening reflection...
@@ -172,58 +201,49 @@
       </div>
     </section>
 
-    <!-- TAB 4: SETTINGS & NOTIFICATIONS -->
+    <!-- TAB 6: SETTINGS & NOTIFICATIONS -->
     <section id="settingsTab" class="tab-content" style="display: none;">
       <div class="card">
         <div class="card-header">
-          <div class="card-title">⚙️ Notification & Email Configuration</div>
+          <div class="card-title">⚙️ Notification &amp; Email Configuration</div>
         </div>
 
         <form id="settingsForm">
-          
           <!-- EMAIL CONFIGURATION -->
           <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: var(--radius-md); padding: 1.2rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
-              <h4 style="color: #818cf8; display: flex; align-items: center; gap: 0.5rem;">
-                📧 Email Notifications Settings
-              </h4>
+              <h4 style="color: #818cf8; display: flex; align-items: center; gap: 0.5rem;">📧 Email Notifications</h4>
               <button type="button" class="btn btn-primary btn-sm" id="testEmailBtn">Send Test Email</button>
             </div>
-            
             <div class="grid-2">
               <div class="form-group">
-                <label>Recipient Email Address (Where you get notified) *</label>
+                <label>Recipient Email *</label>
                 <input type="email" id="set_email_recipient" class="form-control" placeholder="your.name@gmail.com" required>
               </div>
-
               <div class="form-group">
-                <label>Sender Email Address (or leave same as recipient)</label>
-                <input type="email" id="set_email_sender" class="form-control" placeholder="your.name@gmail.com">
+                <label>Sender Email</label>
+                <input type="email" id="set_email_sender" class="form-control" placeholder="fitnesspoint943@gmail.com">
               </div>
             </div>
-
             <div class="grid-2">
               <div class="form-group">
                 <label>SMTP Password / Gmail App Password *</label>
                 <input type="password" id="set_email_smtp_password" class="form-control" placeholder="16-character App Password">
                 <small style="color: var(--text-muted);">For Gmail: Use an <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: #38bdf8;">App Password</a> with 2-Step Verification.</small>
               </div>
-
               <div class="form-group">
                 <label>Enable Email Notifications</label>
                 <select id="set_enable_email_notifications" class="form-control">
-                  <option value="true">Enabled (Send to my email)</option>
+                  <option value="true">Enabled</option>
                   <option value="false">Disabled</option>
                 </select>
               </div>
             </div>
-
             <div class="grid-2">
               <div class="form-group">
-                <label>SMTP Server Host</label>
+                <label>SMTP Host</label>
                 <input type="text" id="set_email_smtp_host" class="form-control" value="smtp.gmail.com">
               </div>
-
               <div class="form-group">
                 <label>SMTP Port</label>
                 <input type="number" id="set_email_smtp_port" class="form-control" value="587">
@@ -233,13 +253,12 @@
 
           <div class="grid-2">
             <div class="form-group">
-              <label>🌅 Morning Briefing Alert Time</label>
+              <label>🌅 Morning Briefing Time</label>
               <input type="time" id="set_morning_briefing_time" class="form-control">
-              <small style="color: var(--text-muted);">Daily consolidated briefing sent to Desktop & Email.</small>
+              <small style="color: var(--text-muted);">Daily briefing sent to Desktop &amp; Email.</small>
             </div>
-
             <div class="form-group">
-              <label>🌙 Bedtime Planning Reminder Time</label>
+              <label>🌙 Bedtime Planning Reminder</label>
               <input type="time" id="set_evening_planning_time" class="form-control">
               <small style="color: var(--text-muted);">Reminds you to log your routine before sleep.</small>
             </div>
@@ -249,27 +268,23 @@
             <div class="form-group">
               <label>⏰ Task Reminder Lead Time (Minutes)</label>
               <input type="number" id="set_notify_lead_minutes" class="form-control" min="1" max="60">
-              <small style="color: var(--text-muted);">Notification dispatched before each scheduled task.</small>
             </div>
-
             <div class="form-group">
               <label>🔊 Desktop Toast Sound</label>
               <select id="set_enable_audio_chime" class="form-control">
-                <option value="true">Enabled (Play sound on alert)</option>
-                <option value="false">Disabled (Silent toast)</option>
+                <option value="true">Enabled</option>
+                <option value="false">Disabled (Silent)</option>
               </select>
             </div>
           </div>
 
           <hr style="border: none; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
-
           <h4 style="margin-bottom: 1rem; color: #818cf8;">📡 Other Channels (Optional)</h4>
 
           <div class="form-group">
             <label>Discord Webhook URL</label>
             <input type="text" id="set_discord_webhook_url" class="form-control" placeholder="https://discord.com/api/webhooks/...">
           </div>
-
           <div class="grid-2">
             <div class="form-group">
               <label>Telegram Bot Token</label>
@@ -290,9 +305,9 @@
 
   </main>
 
-  <!-- Add Task Modal -->
+  <!-- ─── Add Task Modal ────────────────────────────────────────────── -->
   <div id="taskModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
-    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; width: 90%; max-width: 500px;">
+    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
       <h3 style="margin-bottom: 1rem;" id="modalTitle">Add New Task</h3>
       <form id="taskForm">
         <input type="hidden" id="editTaskId">
@@ -349,6 +364,67 @@
           <button type="submit" class="btn btn-primary">Save Task</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ─── Add Habit Modal ───────────────────────────────────────────── -->
+  <div id="habitModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; width: 90%; max-width: 400px;">
+      <h3 style="margin-bottom: 1rem;">Add New Habit</h3>
+      <form id="habitForm">
+        <div class="form-group">
+          <label>Habit Name *</label>
+          <input type="text" id="habitTitle" class="form-control" required placeholder="e.g. Morning Workout">
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Icon / Emoji</label>
+            <input type="text" id="habitIcon" class="form-control" value="⭐" maxlength="4">
+          </div>
+          <div class="form-group">
+            <label>Frequency</label>
+            <select id="habitFrequency" class="form-control">
+              <option value="daily">Daily</option>
+              <option value="weekdays">Weekdays Only</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+          <button type="button" class="btn btn-secondary" id="closeHabitModalBtn">Cancel</button>
+          <button type="submit" class="btn btn-emerald">Add Habit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ─── Pomodoro Focus Modal ──────────────────────────────────────── -->
+  <div id="pomodoroModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center;">
+    <div class="pomodoro-panel">
+      <div class="pomodoro-header">
+        <h3>🍅 Pomodoro Focus Timer</h3>
+        <button class="icon-btn" id="closePomodoroBtn" style="font-size: 1.4rem; color: #94a3b8;">✕</button>
+      </div>
+      <div class="pomodoro-display" id="pomodoroDisplay">25:00</div>
+      <div class="pomodoro-label" id="pomodoroLabel">Focus Session</div>
+      <div class="pomodoro-controls">
+        <button class="btn btn-primary" id="startPomodoroBtn">▶ Start</button>
+        <button class="btn btn-secondary" id="pausePomodoroBtn" disabled>⏸ Pause</button>
+        <button class="btn btn-secondary" id="resetPomodoroBtn">↺ Reset</button>
+      </div>
+      <div class="pomodoro-modes">
+        <button class="pomo-mode active" data-mins="25" data-label="Focus Session">🍅 25 min</button>
+        <button class="pomo-mode" data-mins="5" data-label="Short Break">☕ 5 min</button>
+        <button class="pomo-mode" data-mins="15" data-label="Long Break">🛌 15 min</button>
+      </div>
+      <div class="form-group" style="margin-top: 1rem;">
+        <label style="font-size: 0.85rem; color: var(--text-muted);">🎵 Ambient Sound</label>
+        <select id="ambientSelect" class="form-control" style="font-size: 0.85rem;">
+          <option value="none">None (Silent)</option>
+          <option value="rain">🌧️ Rain</option>
+          <option value="brown">🌊 Brown Noise</option>
+          <option value="cafe">☕ Cafe Hum</option>
+        </select>
+      </div>
     </div>
   </div>
 

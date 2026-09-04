@@ -1,7 +1,7 @@
-﻿import os
+import os
 from contextlib import asynccontextmanager
 from typing import Dict, Any, List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from fastapi import FastAPI, HTTPException, Query, Body
 from fastapi.staticfiles import StaticFiles
@@ -35,7 +35,8 @@ async def root():
         return FileResponse(index_file)
     return {"message": "Daily Routine Agent API is running."}
 
-# Task Models
+# ───── Pydantic Models ─────────────────────────────────────────────────────────
+
 class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = ""
@@ -65,7 +66,19 @@ class BulkNightEntry(BaseModel):
     raw_text: str
     target_date: Optional[str] = None
 
-# Routes
+class SubtaskCreate(BaseModel):
+    task_id: int
+    title: str
+    estimated_minutes: Optional[int] = 15
+
+class HabitCreate(BaseModel):
+    title: str
+    icon: Optional[str] = "⭐"
+    frequency: Optional[str] = "daily"
+    target_days: Optional[int] = 7
+
+# ───── Task Endpoints ──────────────────────────────────────────────────────────
+
 @app.get("/api/tasks")
 def list_tasks(task_date: Optional[str] = Query(None, alias="date")):
     if not task_date:
@@ -119,6 +132,99 @@ def bulk_night_entry(payload: BulkNightEntry):
         "tasks": database.get_tasks_for_date(target_date)
     }
 
+# ───── AI Task Decomposition ───────────────────────────────────────────────────
+
+@app.post("/api/tasks/{task_id}/ai-decompose")
+def ai_decompose_task(task_id: int):
+    task = database.get_task_by_id(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    subtasks = agent_instance.decompose_task_into_subtasks(
+        task["title"], task.get("duration_minutes", 30)
+    )
+    created = []
+    for st in subtasks:
+        sid = database.create_subtask(task_id, st["title"], st["estimated_minutes"])
+        created.append({"id": sid, "title": st["title"],
+                         "estimated_minutes": st["estimated_minutes"], "is_completed": False})
+
+    return {"status": "success", "task_id": task_id, "subtasks": created}
+
+# ───── Subtask Endpoints ───────────────────────────────────────────────────────
+
+@app.get("/api/tasks/{task_id}/subtasks")
+def get_task_subtasks(task_id: int):
+    task = database.get_task_by_id(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"subtasks": task.get("subtasks", [])}
+
+@app.post("/api/subtasks")
+def create_subtask_endpoint(payload: SubtaskCreate):
+    sid = database.create_subtask(payload.task_id, payload.title,
+                                   payload.estimated_minutes or 15)
+    return {"status": "success", "id": sid}
+
+@app.put("/api/subtasks/{subtask_id}/toggle")
+def toggle_subtask_endpoint(subtask_id: int):
+    # Read current state then toggle
+    conn = database.get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT is_completed FROM subtasks WHERE id = ?", (subtask_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Subtask not found")
+    new_state = not bool(row["is_completed"])
+    database.toggle_subtask(subtask_id, new_state)
+    return {"status": "success", "is_completed": new_state}
+
+@app.delete("/api/subtasks/{subtask_id}")
+def delete_subtask_endpoint(subtask_id: int):
+    database.delete_subtask(subtask_id)
+    return {"status": "success"}
+
+# ───── Habit Endpoints ─────────────────────────────────────────────────────────
+
+@app.get("/api/habits")
+def list_habits(log_date: Optional[str] = Query(None, alias="date")):
+    if not log_date:
+        log_date = date.today().isoformat()
+    habits = database.get_habits_for_date(log_date)
+    # Normalize: rename is_completed → today_done for frontend consistency
+    for h in habits:
+        h["today_done"] = bool(h.get("is_completed", 0))
+    return {"date": log_date, "habits": habits}
+
+@app.post("/api/habits")
+def create_habit_endpoint(payload: HabitCreate):
+    hid = database.create_habit(payload.title, payload.icon or "⭐")
+    return {"status": "success", "id": hid}
+
+@app.delete("/api/habits/{habit_id}")
+def delete_habit_endpoint(habit_id: int):
+    database.delete_habit(habit_id)
+    return {"status": "success"}
+
+@app.post("/api/habits/{habit_id}/toggle")
+def toggle_habit_endpoint(habit_id: int, log_date: Optional[str] = Query(None, alias="date")):
+    if not log_date:
+        log_date = date.today().isoformat()
+    result = database.toggle_habit(habit_id, log_date)
+    return {"status": "success", "new_status": "completed" if result.get("is_completed") else "pending"}
+
+# ───── Analytics Endpoints ─────────────────────────────────────────────────────
+
+@app.get("/api/analytics/weekly")
+def get_weekly_analytics():
+    analytics = database.get_weekly_analytics()
+    days_data = analytics.get("days", [])
+    report = agent_instance.generate_weekly_analytics_report(days_data)
+    return {"status": "success", "days": days_data, "report": report}
+
+# ───── Agent & Scheduler ───────────────────────────────────────────────────────
+
 @app.post("/api/agent/optimize")
 def optimize_routine(payload: Dict[str, str] = Body(...)):
     task_date = payload.get("date", date.today().isoformat())
@@ -137,6 +243,8 @@ def get_evening_reflection(task_date: Optional[str] = Query(None, alias="date"))
         task_date = date.today().isoformat()
     return agent_instance.generate_evening_reflection(task_date)
 
+# ───── Settings ────────────────────────────────────────────────────────────────
+
 @app.get("/api/settings")
 def get_settings():
     return database.get_settings()
@@ -146,9 +254,11 @@ def save_settings(settings: Dict[str, Any]):
     database.update_settings(settings)
     return {"status": "success", "settings": database.get_settings()}
 
+# ───── Notifications ───────────────────────────────────────────────────────────
+
 @app.post("/api/notifications/test")
 def test_notification():
-    notify("🌟 Daily Routine Agent Ready", "This is a test notification from your Daily Routine system. All systems are operational!")
+    notify("Daily Routine Agent Ready", "This is a test notification from your Daily Routine system. All systems are operational!")
     return {"status": "success", "message": "Notification dispatched."}
 
 @app.post("/api/notifications/test-email")
@@ -157,7 +267,7 @@ def test_email(payload: Optional[Dict[str, str]] = None):
     recipient = (payload and payload.get("recipient")) or settings.get("email_recipient")
     if not recipient:
         raise HTTPException(status_code=400, detail="Please provide or save a recipient email address first.")
-    
+
     success, msg = send_email_notification(
         recipient,
         "Test Email from Daily Routine Agent",
@@ -171,9 +281,27 @@ def test_email(payload: Optional[Dict[str, str]] = None):
 def get_logs():
     return database.get_notification_logs(30)
 
+# ───── Stats ───────────────────────────────────────────────────────────────────
+
 @app.get("/api/stats")
 def get_stats():
     return database.get_stats()
+
+# ───── PWA ────────────────────────────────────────────────────────────────────
+
+@app.get("/manifest.json")
+async def get_manifest():
+    mf = os.path.join(STATIC_DIR, "manifest.json")
+    if os.path.exists(mf):
+        return FileResponse(mf, media_type="application/manifest+json")
+    return JSONResponse({"error": "manifest not found"}, status_code=404)
+
+@app.get("/sw.js")
+async def get_sw():
+    sw = os.path.join(STATIC_DIR, "sw.js")
+    if os.path.exists(sw):
+        return FileResponse(sw, media_type="application/javascript")
+    return JSONResponse({"error": "service worker not found"}, status_code=404)
 
 if __name__ == "__main__":
     import uvicorn
