@@ -2,16 +2,21 @@ Set objShell = CreateObject("WScript.Shell")
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 appDir = objFSO.GetParentFolderName(WScript.ScriptFullName)
-pythonExe = "python"
 scriptPath = appDir & "\app.py"
 
-' Start FastAPI server in background
-objShell.Run "cmd /c start /min """ & pythonExe & """ """ & scriptPath & """", 0, False
+' Find pythonw.exe to run silently without opening any IDE or command prompt
+pythonwExe = "C:\Users\USER\AppData\Local\Programs\Python\Python311\pythonw.exe"
+If Not objFSO.FileExists(pythonwExe) Then
+  pythonwExe = "pythonw.exe"
+End If
 
-' Wait 2 seconds for server to start
-WScript.Sleep 2000
+' Start FastAPI backend silently in background using pythonw.exe
+objShell.Run """" & pythonwExe & """ """ & scriptPath & """", 0, False
 
-' Launch in Chrome app mode for dedicated window (no browser tabs/toolbar)
+' Brief pause to allow server to be ready
+WScript.Sleep 1500
+
+' Launch dedicated Chrome/Edge app window
 Dim chromePaths(3)
 chromePaths(0) = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 chromePaths(1) = "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"

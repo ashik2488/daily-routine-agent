@@ -1,3 +1,9 @@
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run "python -m uvicorn app:app --host 127.0.0.1 --port 8000", 0, False
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+appDir = objFSO.GetParentFolderName(WScript.ScriptFullName)
+pythonwExe = "C:\Users\USER\AppData\Local\Programs\Python\Python311\pythonw.exe"
+If Not objFSO.FileExists(pythonwExe) Then
+  pythonwExe = "pythonw.exe"
+End If
+WshShell.Run """" & pythonwExe & """ """ & appDir & "\app.py""", 0, False
 Set WshShell = Nothing

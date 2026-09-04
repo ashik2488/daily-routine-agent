@@ -1,5 +1,19 @@
+// ─── Local Timezone Date Helper (Prevents UTC day shift bug) ─────────────────
+function getLocalDateString(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTomorrowDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return getLocalDateString(d);
+}
+
 // ─── State ───────────────────────────────────────────────────────────────────
-let currentDate = new Date().toISOString().split("T")[0];
+let currentDate = getLocalDateString();
 let currentTasks = [];
 let pomodoroInterval = null;
 let pomodoroSecondsLeft = 25 * 60;
@@ -44,21 +58,28 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 // ─── Date Navigation ──────────────────────────────────────────────────────────
 selectedDateInput.value = currentDate;
 document.getElementById("nightTargetDate").value = getTomorrowDate();
-function getTomorrowDate() {
-  const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0];
-}
+
 selectedDateInput.addEventListener("change", e => { currentDate = e.target.value; loadTasks(); });
 document.getElementById("prevDayBtn").addEventListener("click", () => {
-  const d = new Date(currentDate); d.setDate(d.getDate() - 1);
-  currentDate = d.toISOString().split("T")[0]; selectedDateInput.value = currentDate; loadTasks();
+  const parts = currentDate.split("-");
+  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  d.setDate(d.getDate() - 1);
+  currentDate = getLocalDateString(d);
+  selectedDateInput.value = currentDate;
+  loadTasks();
 });
 document.getElementById("nextDayBtn").addEventListener("click", () => {
-  const d = new Date(currentDate); d.setDate(d.getDate() + 1);
-  currentDate = d.toISOString().split("T")[0]; selectedDateInput.value = currentDate; loadTasks();
+  const parts = currentDate.split("-");
+  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  d.setDate(d.getDate() + 1);
+  currentDate = getLocalDateString(d);
+  selectedDateInput.value = currentDate;
+  loadTasks();
 });
 document.getElementById("todayBtn").addEventListener("click", () => {
-  currentDate = new Date().toISOString().split("T")[0];
-  selectedDateInput.value = currentDate; loadTasks();
+  currentDate = getLocalDateString();
+  selectedDateInput.value = currentDate;
+  loadTasks();
 });
 
 // ─── Load Tasks ───────────────────────────────────────────────────────────────
@@ -370,7 +391,7 @@ function applyTemplate(type) {
 
 // ─── Habits Tab ───────────────────────────────────────────────────────────────
 async function loadHabits() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalDateString();
   const grid = document.getElementById("habitsGrid");
   grid.innerHTML = `<div style="color:var(--text-muted);padding:1rem;">Loading...</div>`;
   try {
@@ -395,7 +416,7 @@ async function loadHabits() {
 }
 
 async function toggleHabit(habitId) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalDateString();
   await fetch(`/api/habits/${habitId}/toggle?date=${today}`, { method: "POST" });
   loadHabits();
 }
